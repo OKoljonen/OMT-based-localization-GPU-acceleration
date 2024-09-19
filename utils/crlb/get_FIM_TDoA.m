@@ -11,7 +11,7 @@ function partial_FIM = get_FIM_TDoA(source_pos,rec1_pos,rec2_pos,prop_speed,nois
 % source_pos            -           source position coordinates, d-vector.
 % rec1_pos              -           coordinates for first receiver,
 %                                   d-vector.
-% rec2_pos              -           coordiantes for second receiver,
+% rec2_pos              -           coordinates for second receiver,
 %                                   d-vector.
 % prop_speed            -           propagation speed of the medium,
 %                                   scalar.

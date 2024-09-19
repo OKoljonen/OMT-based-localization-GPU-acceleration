@@ -5,6 +5,7 @@
 
 disp('Setting up the problem')
 
+gpuDevice(1);
 
 % add util path
 addpath(genpath('utils'))
@@ -111,15 +112,15 @@ tdoas_listed = tdoa_matrix_to_list(tdoas_measured, tdoa_pairs,all_tdoas_from_toa
 
 % create the cost matrix C
 cost_mat = cost_matrix_setup_function(tdoas_listed,candidates,r,trash_prct,trash_cost);
-cost_mat_gpu = gpuArray(cost_mat);
+cost_mat_gpu = gpuArray(cost_mat)
 epsilon = 1e-7; % setting for omt solver
-epsilon_gpu = gpuArray(epsilon);
+epsilon_gu = gpuArray(epsilon);
 eta = 1; % setting for omt solver
 eta_gpu = gpuArray(eta);
 R_gpu = gpuArray(R);
 for k_ot_trial = 1:5
     tic
-    [M,cluster_vec,trash_mass] = omt_clustering_w_entropy_reg_penalty_logstable_w_trashstate_gpu(cost_mat_gpu(:,1:end-1),cost_mat_gpu(:,end),epsilon_gpu,eta_gpu,R_gpu);
+    [M,cluster_vec,trash_mass] = omt_clustering_w_entropy_reg_penalty_logstable_w_trashstate_gpu(cost_mat(:,1:end-1)_gpu,cost_mat(:,end)_gpu,epsilon_gpu,eta_gpu,R_gpu);
     M_out = M;
     mu_out = cluster_vec;
     if sum(cluster_vec>.8)==S

@@ -12,7 +12,10 @@ function [tdoas_measured,tdoas_true,r,s,nbr_missing, nbr_extra] = simulate_tdoas
 % 0 if we assume that the correct tdoa peaks are found (only the ones with
 % same sender are computed)
 
-% set values that might not be sent as input
+% set values that might not be sent as input, OBS! Why? Implicitly said
+% that arguments can't be missing from the center, i.e. let's say only sigma
+% missing, then also all_tdoas is set to 0 because nargin = 7, even though
+% there was a value for all_tdoas given.
 if nargin < 3 || isempty(sigma); sigma = 0; end
 if nargin < 4 || isempty(r_bounds); r_bounds = [0 10; 0 10; 0 2]; end
 if nargin < 5 || isempty(s_bounds); s_bounds = [0 10; 0 10; 0 2]; end

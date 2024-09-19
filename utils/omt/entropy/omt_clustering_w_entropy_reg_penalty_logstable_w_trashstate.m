@@ -74,7 +74,7 @@ function [M,cluster_vec,trash_mass] = omt_clustering_w_entropy_reg_penalty_logst
 % This version: 12 February 2024. Filip Elvander.
 %%%%%%%%%%%
 
-do_print = 0;
+do_print = 1;
 
 sol_tol = 1e-5;
 max_iter = 1e4;

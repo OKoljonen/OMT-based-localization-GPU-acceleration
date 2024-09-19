@@ -1,7 +1,7 @@
 function [candidates, candidates_full, candidates_idx] = multilaterate_candidates(tdoas_measured, ind_set, r, imag_thresh,best_candidates_per_set,s)
-% function that takes a RxR matrix of measured tdoas, a seet of 3 index set
+% function that takes a RxR matrix of measured tdoas, a set of 3 index set
 % pair (values <R) and a threshold for whether to remove values that have
-% to large imaginary part and returns a set of candidate positions for
+% too large imaginary parts and returns a set of candidate positions for
 % senders. The candidates are multilaterated from all tdoa peak
 % combinations of the different receiver pairs in ind_set. The elements of
 % tdoas_measured should contain the fields r1; r2; s or s1 and s2; N and 

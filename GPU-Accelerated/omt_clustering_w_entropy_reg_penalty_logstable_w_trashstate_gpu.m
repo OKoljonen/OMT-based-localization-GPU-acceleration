@@ -1,0 +1,94 @@
+function [M,cluster_vec,trash_mass] = omt_clustering_w_entropy_reg_penalty_logstable_w_trashstate_gpu(C,trash_cost,epsilon,eta,R)
+    % GPU-accelerated version of the OMT clustering algorithm
+    do_print = 1;
+    max_iter = 1e4;
+    Psi_update_cycle = 20;
+    sol_tol = gpuArray(1e-5);
+
+
+    % Move input data to GPU
+    
+    [N_tau,N_grid] = size(C);
+    % C,trash_cost,epsilon,eta,R are all GPU-arrays already
+    % Initialize variables on GPU
+    lambda = gpuArray.zeros(N_tau,1);
+    mu = gpuArray.zeros(N_grid,1);
+    Psi = gpuArray.zeros(N_tau,N_grid);
+    
+    % Pre-computed quantities on GPU
+    scaled_C = 1/epsilon*C;
+    ones_mu = gpuArray.ones(N_grid,1);
+    ones_mu_plus_trash = gpuArray.ones(N_grid+1,1);
+    ones_lambda = gpuArray.ones(N_tau,1);
+    trash_scaled = -1/epsilon*trash_cost;
+    
+    % Other constants
+    R_tilde = R*(R-1)/2;
+    mu_constant = -log(R_tilde)*ones_mu;
+    
+    Psi_minus_C = 1/epsilon*Psi-scaled_C;
+    Psi_old = Psi;
+    % Main iteration loop
+    for k_iter = 1:max_iter
+        % Update lambda
+        log_xi_lambda = stable_log_sum_exp_gpu([Psi_minus_C-1/epsilon*(ones_lambda*mu'),trash_scaled], ones_mu_plus_trash);
+        lambda = -epsilon*log_xi_lambda;
+        
+        % Update mu
+        log_xi_mu = stable_log_sum_exp_gpu(Psi_minus_C'+1/epsilon*(ones_mu*lambda'), ones_lambda);
+        mu = epsilon*max(0,mu_constant+log_xi_mu);
+        % Update Psi (less frequently)
+        
+        if mod(k_iter,Psi_update_cycle)==0 || k_iter ==1
+            log_Xi = -scaled_C + (1/epsilon*lambda-1/epsilon*mu');
+            Psi = -epsilon*parallel_min_logsumexp_l1_ball_gpu(log_Xi,eta/epsilon);
+        end
+        
+        Psi_minus_C = 1/epsilon*Psi-scaled_C;
+        if 0
+        diagnostic_val = norm(Psi_old-Psi,"fro")/norm(Psi_old,'fro');
+        if k_iter>2000 && mod(k_iter,Psi_update_cycle)==0 && diagnostic_val<sol_tol
+            fprintf('Convergence after %d iterations\n',k_iter)
+            break
+        end
+        if do_print && mod(k_iter,100)==0
+            fprintf('Iteration %d , rel. norm change %.2E\n',k_iter,diagnostic_val)
+        end
+        end
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        Psi_old = Psi;
+    
+        %%%%%% Diagnostics based on duality gap %%%%%%%%%%%%
+        if k_iter>2000 && mod(k_iter,105)==0 && mod(k_iter,Psi_update_cycle)~=0
+            [pp,dd,duality_gap] = eval_primal_dual_entropy_w_trash_gpu(C,trash_cost,epsilon,eta,R,lambda,mu,Psi);
+            duality_gap = duality_gap/dd;
+            if do_print
+                fprintf('Iteration %d , duality gap %.2E\n',k_iter,duality_gap)
+            end
+            if duality_gap<sol_tol
+                % Check feasibility %
+                log_M = (-scaled_C+1/epsilon*Psi+(1/epsilon*lambda-1/epsilon*mu'));
+                M = exp(log_M);
+                mass_balance_constraint = max(abs(sum(M,2)-1));
+                if mass_balance_constraint<1e-6
+                    fprintf('Convergence after %d iterations\n',k_iter)
+                    break
+                end
+            end
+        end
+        
+        % Convergence check and other operations...
+    end
+    
+    % Compute final results
+    log_M = (-scaled_C+1/epsilon*Psi+(1/epsilon*lambda-1/epsilon*mu'));
+    M = exp(log_M);
+    cluster_vec = sum(M,1)'/R_tilde;
+    trash_mass = exp(-1/epsilon*trash_cost+1/epsilon*lambda);
+    
+    % Move results back to CPU if needed
+    M = gather(M);
+    cluster_vec = gather(cluster_vec);
+    trash_mass = gather(trash_mass);
+end
+

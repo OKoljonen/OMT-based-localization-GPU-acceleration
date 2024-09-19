@@ -37,7 +37,7 @@ function [CRLB_source_pos,CRLB_mat,tot_FIM] = get_CRLB_source_pos(source_pos,rec
 % CRLB_mat                  -       CRLB matrix, serving as a matrix lower
 %                                   bound on the covariance matrix of the
 %                                   estimated coordinate vector, i.e, 
-%                                   CRLB_mat-E((s-\hat{s})(s-\hat{s})^T)>=0
+%                                   dfr-E((s-\hat{s})(s-\hat{s})^T)>=0
 %                                   This is a d-times-d matrix.
 % FIM                       -       Fisher information matrix for the
 %                                   measurements.

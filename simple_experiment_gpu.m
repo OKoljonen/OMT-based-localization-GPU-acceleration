@@ -5,10 +5,11 @@
 
 disp('Setting up the problem')
 
-
 % add util path
 addpath(genpath('utils'))
 addpath(genpath('GPU-Accelerated'))
+gpuDevice(1);
+
 
 
 % define some variables, according to your specific case (measure or to be
@@ -39,7 +40,7 @@ P_missing = 0; % chance of a tdoa measurement being missed, should be 0 here
 P_extra = 0; % chance of an extra tdoa measurement appearing, should be 0 here
 sigma = 0.01; % stds of pertubations/noise to add to the measured tdoas
 
-[tdoas_measured,tdoas_true,r,s,nbr_missing, nbr_extra] = simulate_tdoas(R,S,sigma,r_bounds, s_bounds,P_missing,P_extra,all_tdoas_from_toas); % simulate senders and recivers and compute tdoas
+[tdoas_measured,tdoas_true,r,s,nbr_missing, nbr_extra] = simulate_tdoas(R, S, sigma, r_bounds, s_bounds, P_missing, P_extra, all_tdoas_from_toas); % simulate senders and recivers and compute tdoas
 exists_gt = 1; % set to 0 if there is not ground truth to compare to
 
 %% Read you data from file or put it in here in some way
@@ -113,13 +114,14 @@ tdoas_listed = tdoa_matrix_to_list(tdoas_measured, tdoa_pairs,all_tdoas_from_toa
 cost_mat = cost_matrix_setup_function(tdoas_listed,candidates,r,trash_prct,trash_cost);
 cost_mat_gpu = gpuArray(cost_mat);
 epsilon = 1e-7; % setting for omt solver
-epsilon_gpu = gpuArray(epsilon);
+epsilon_gpu = gpuArray(1e-7);
 eta = 1; % setting for omt solver
-eta_gpu = gpuArray(eta);
+eta_gpu = gpuArray(1); % setting for omt solver
 R_gpu = gpuArray(R);
+
 for k_ot_trial = 1:5
     tic
-    [M,cluster_vec,trash_mass] = omt_clustering_w_entropy_reg_penalty_logstable_w_trashstate_gpu(cost_mat_gpu(:,1:end-1),cost_mat_gpu(:,end),epsilon_gpu,eta_gpu,R_gpu);
+    [M,cluster_vec,trash_mass] = omt_clustering_w_entropy_reg_penalty_logstable_w_trashstate_gpu(cost_mat(:,1:end-1),cost_mat(:,end),epsilon_gpu,eta_gpu,R_gpu);
     M_out = M;
     mu_out = cluster_vec;
     if sum(cluster_vec>.8)==S

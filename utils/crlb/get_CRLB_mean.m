@@ -12,6 +12,7 @@ end
 
 prop_speed_nominal = 1;
 sigma2_noise_nominal = sigma^2;
+CRLB_simulation_mat = zeros(S,1);
 for k_source = 1:S
     [CRLB_source_pos,CRLB_mat,tot_FIM] = ...
         get_CRLB_source_pos(s(:,k_source),rec1_rec2_pair_cell,prop_speed_nominal,sigma2_noise_nominal);
