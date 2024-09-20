@@ -1,12 +1,15 @@
+OBS! THESE ARE MOSTLY THE SAME TEXT THAT WAS PRESENT IN THE REPOSITORY MENTIONED IN THE ABOUT SECTION. I HAVE ADDED TEXT CONCERNING THE GPU-ACCELERATED VERSION OF THE OMT ALGORITHM.
+
 # Optimal Mass Transport Based TDOA Localization
 Repository for Matlab code for the paper Multi-Source Localization and Data Association for Time-Difference of Arrival Measurements[^1]. The problem considered is that of localizing multiple signal sources based on time-difference of arrival (TDOA) measurements. The source positions and signals are unknown, while the receiver positions are assumed to be known as well as the TDOA measurements (which e.g. can be achieved by correlating received signals).
 
 This method performs joint localization and data association by means of an optimal mass transport formulation. The method can be divided into two steps. First, a candidate source position set is constructed using a multilateration solver[^2] based on minimal sets of receiver pairs. Then, the best candidate positions are found together with the association between these positions and the measured TDOA values. Finally, as the association is found, local optimization can be performed, minimizing the error between the measured TDOAs and the relative distances between the found source positions and the receivers.
 
 ## Run the code
-To run a simple experiment, where TDOAs are measured from a number of *R* simulated receiver positions and *S* simulated source positions, run the script 
+To run a simple experiment, where TDOAs are measured from a number of *R* simulated receiver positions and *S* simulated source positions. You can observe the run-time difference by running the two scripts: 
 ```
 simple_experiment.m
+simple_experiment_gpu.m
 ```
 The TDOA measurements *tdoas_measured* and the receiver positions *r* can also be provided if a true experiment has been run. The method then computes and outputs the source positions.
 
