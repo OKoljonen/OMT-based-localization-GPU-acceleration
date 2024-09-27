@@ -9,13 +9,13 @@ disp('Setting up the problem')
 addpath(genpath('utils'))
 addpath(genpath('GPU-Accelerated'))
 gpuDevice(1);
-
+plot_picture = 1;
 
 
 % define some variables, according to your specific case (measure or to be
 % generated)
-R = 12; % nbr of receivers
-S = 3; % nbr of senders
+R = 5; % nbr of receivers
+S = 2; % nbr of senders
 
 % some variables needed for the method
 imag_thresh = 0.8; % if the norm of the imaginary part of the multilateration solution is larger than this, the candidate is discarded
@@ -34,14 +34,15 @@ SMTL_lambda = 0.5; % parameter for the comparison met
 
 
 %% Things needed for data generation. Skip if you already have data
-r_bounds = []; % low and high bounds in x-, y- and z-dir for where receivers can be (size 3x2)
-s_bounds = []; % low and high bounds in x-, y- and z-dir for where senders can be (size 3x2)
+r_bounds = [0 10; 0 10; 0 2]; % low and high bounds in x-, y- and z-dir for where receivers can be (size 3x2)
+s_bounds = [0 10; 0 10; 0 2]; % low and high bounds in x-, y- and z-dir for where senders can be (size 3x2)
 P_missing = 0; % chance of a tdoa measurement being missed, should be 0 here
 P_extra = 0; % chance of an extra tdoa measurement appearing, should be 0 here
 sigma = 0.01; % stds of pertubations/noise to add to the measured tdoas
 
 [tdoas_measured,tdoas_true,r,s,nbr_missing, nbr_extra] = simulate_tdoas(R, S, sigma, r_bounds, s_bounds, P_missing, P_extra, all_tdoas_from_toas); % simulate senders and recivers and compute tdoas
 exists_gt = 1; % set to 0 if there is not ground truth to compare to
+
 
 %% Read you data from file or put it in here in some way
 
@@ -70,9 +71,9 @@ ind_set_full = [];
 sel_all = [];
 
 %% Find the candidate set
-tic
-disp('Creating the candidate set using multilateration solver.')
 
+disp('Creating the candidate set using multilateration solver.')
+tic
 % create full candidate set by choosing nbr_candset_iter different toda
 % triplets
 for candset_iter = 1:nbr_candset_iter
@@ -100,10 +101,10 @@ end
 
 % remove 'dupplicate' candidates that are very close
 candidates = remove_duplicates(candidates,duplicate_threshold);
-
 toc
-%% Run the OMT algorithm
 
+%% Run the OMT algorithm
+tic
 
 disp('Solving the OMT problem using all TDOA measurements.')
 
@@ -153,9 +154,9 @@ if exists_gt
     % find mapping between gt senders and found senders
     s_eucl_dist = pdist2(s',s_found');
 end
-
+toc
 %% Evaluate the association and refine solution using local optimization
-tic
+
 disp('Running local refinements')
 
 % Refine sender position solution using association
@@ -169,7 +170,7 @@ if size(s_found,2) == S
     % Check distance from true source positions to best candidates
     dists_temp = get_dists(s_refined,candidates);
 end
-toc
+M_binary = (M_out(:,best_pos(1:S))>0.7)+0;
 %% Print some results
 
 disp('Done')
@@ -193,3 +194,144 @@ if exists_gt
 end
 
 
+
+
+
+
+
+
+if plot_picture
+% Plot parameters
+resolution = 100;
+range = 10;
+
+% Create meshgrid
+[x, y, z] = meshgrid(linspace(0, range, resolution), ...
+                     linspace(0, range, resolution), ...
+                     linspace(0, 2, resolution));
+
+% Plot
+figure;
+hold on;
+
+% Plot hyperboloids for each TDOA measurement
+for i = 1:R
+    for j = i+1:R
+        tdoas = tdoas_measured{i,j}.tdoas;
+        for k = 1:length(tdoas)
+            d = sqrt((x - r(1,i)).^2 + (y - r(2,i)).^2 + (z - r(3,i)).^2) - ...
+                sqrt((x - r(1,j)).^2 + (y - r(2,j)).^2 + (z - r(3,j)).^2);
+            isosurface(x, y, z, d, tdoas(k));
+        end
+    end
+end
+
+% Plot receiver positions
+scatter3(r(1,:), r(2,:), r(3,:), 100, 'r', 'filled', 'MarkerEdgeColor', 'k');
+
+% Plot sender positions
+scatter3(s(1,:), s(2,:), s(3,:), 100, 'b', 'filled', 'MarkerEdgeColor', 'k');
+
+% Set plot properties
+xlabel('X');
+ylabel('Y');
+zlabel('Z');
+title('Simulated TDOAs, Senders, and Receivers');
+axis([0 range 0 range 0 2]);
+grid on;
+view(3);
+colormap('jet');
+colorbar;
+
+% Add legend
+legend('TDOA Hyperboloids', 'Receivers', 'Senders', 'Location', 'northeastoutside');
+
+% Add lighting for better 3D effect
+camlight;
+lighting gouraud;
+
+hold off;
+
+% Display simulation info
+fprintf('Number of receivers: %d\n', R);
+fprintf('Number of senders: %d\n', S);
+fprintf('Number of missing TDOAs: %d\n', nbr_missing);
+fprintf('Number of extra TDOAs: %d\n', nbr_extra);
+
+% Print diagnostic information
+fprintf('Dimensions of M_binary: %d x %d\n', size(M_binary, 1), size(M_binary, 2));
+fprintf('Dimensions of M_out: %d x %d\n', size(M_out, 1), size(M_out, 2));
+fprintf('Number of receivers (R): %d\n', R);
+fprintf('Number of senders (S): %d\n', S);
+
+
+
+% Create a new figure for refined results
+figure;
+hold on;
+
+% Plot hyperboloids for each TDOA measurement with M_binary == 1
+for i = 1:size(M_binary, 1)
+    for j = 1:size(M_binary,2)
+        if M_binary(i,j) == 1
+            i2 = tdoas_listed(i).r1;
+            j2 = tdoas_listed(i).r2;
+            d = sqrt((x - r(1,j2)).^2 + (y - r(2,j2)).^2 + (z - r(3,j2)).^2) - ...
+                    sqrt((x - r(1,i2)).^2 + (y - r(2,i2)).^2 + (z - r(3,i2)).^2);
+            isosurface(x, y, z, d, tdoas_listed(i).tdoas);
+        end
+    end
+end
+
+% Plot receiver positions
+scatter3(r(1,:), r(2,:), r(3,:), 100, 'r', 'filled', 'MarkerEdgeColor', 'k');
+
+% Plot refined sender positions (if available)
+if exist('s_refined', 'var')
+    scatter3(s_refined(1,:), s_refined(2,:), s_refined(3,:), 100, 'g', 'filled', 'MarkerEdgeColor', 'k');
+end
+
+% Plot original sender positions for comparison
+scatter3(s(1,:), s(2,:), s(3,:), 100, 'b', 'filled', 'MarkerEdgeColor', 'k');
+
+% Set plot properties
+xlabel('X');
+ylabel('Y');
+zlabel('Z');
+title('Selected TDOAs based on M\_binary and Sender Positions');
+axis([0 range 0 range 0 2]);
+grid on;
+view(3);
+colormap('jet');
+colorbar;
+
+% Add legend
+if exist('s_refined', 'var')
+    legend('TDOA Hyperboloids (M_{binary} = 1)', 'Receivers', 'Refined Senders', 'Original Senders', 'Location', 'northeastoutside');
+else
+    legend('TDOA Hyperboloids (M_{binary} = 1)', 'Receivers', 'Original Senders', 'Location', 'northeastoutside');
+end
+
+% Add lighting for better 3D effect
+camlight;
+lighting gouraud;
+
+hold off;
+
+% Display information about M_binary and M_out
+fprintf('\nM_binary and M_out Analysis:\n');
+fprintf('Total number of non-zero elements in M_binary: %d\n', sum(M_binary(:)));
+fprintf('Number of rows with at least one non-zero in M_binary: %d\n', sum(any(M_binary, 2)));
+fprintf('Maximum value in M_out: %.4f\n', max(M_out(:)));
+fprintf('Minimum value in M_out: %.4f\n', min(M_out(:)));
+fprintf('Number of values in M_out > 0.7: %d\n', sum(M_out(:) > 0.7));
+
+% If s_refined exists, display refinement info
+if exist('s_refined', 'var')
+    fprintf('\nRefinement Results:\n');
+    fprintf('Number of refined sender positions: %d\n', size(s_refined, 2));
+    if exist('mean_distance_refined', 'var')
+        fprintf('Mean distance after refinement: %.4f\n', mean_distance_refined);
+    end
+end
+end
